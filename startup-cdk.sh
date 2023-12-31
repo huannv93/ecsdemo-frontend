@@ -26,15 +26,15 @@ if [[ "${orchestrator}" == 'ecs' ]]; then
     case "${NETWORK}" in
       100)
         zone=a
-        color=Crimson
+        color=Blue
         ;;
       101)
         zone=b
-        color=CornflowerBlue
+        color=Blue
         ;;
       102)
         zone=c
-        color=LightGreen
+        color=Blue
         ;;
       *)
         zone=unknown
