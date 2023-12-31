@@ -38,7 +38,7 @@ if [[ "${orchestrator}" == 'ecs' ]]; then
         ;;
       *)
         zone=unknown
-        color=Yellow
+        color=Blue
         ;;
     esac
 fi
@@ -83,7 +83,7 @@ fi
 
 export CODE_HASH="$(cat code_hash.txt)"
 export IP
-export AZ="${IP} in AZ-${zone}-Version2"
+export AZ="${IP} in AZ-${zone}"
 
 # exec bundle exec thin start
 RAILS_ENV=production rake assets:precompile
