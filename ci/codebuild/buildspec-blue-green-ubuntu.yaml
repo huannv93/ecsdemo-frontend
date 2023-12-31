@@ -48,14 +48,14 @@ phases:
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_PRIMARY.json
       - cat taskdef_$REGION_PRIMARY.json
 
-      # # Create taskdef.json on SECONDARY_1 Region
-      # - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_SECONDARY_1 > taskdef.temp.json 2> error.log
-      # - cat taskdef.temp.json
-      # - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json
-      # - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
-      # - echo $IMAGE_URL
-      # - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_1.json
-      # - cat taskdef_$REGION_SECONDARY_1.json
+      # Create taskdef.json on SECONDARY_1 Region
+      - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_SECONDARY_1 > taskdef.temp.json 2> error.log
+      - cat taskdef.temp.json
+      - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json
+      - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+      - echo $IMAGE_URL
+      - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_1.json
+      - cat taskdef_$REGION_SECONDARY_1.json
       
 
       # # TODO: IMPROVE IF COMMAND FAILS
@@ -75,6 +75,7 @@ phases:
 
   post_build:
     commands:
+      - ls -la 
       # Remove images 
       - docker image rm "$RAW_SERVICE_NAME:latest" -f
       - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
