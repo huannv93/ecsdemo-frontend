@@ -1,0 +1,42 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+
+  pre_build:
+    commands:
+      - cd $SERVICE_LOCATION
+      - docker --version
+
+  build:
+    commands:
+      # Docker build
+      - docker build -t $RAW_SERVICE_NAME .
+      # Push container image to ECR
+      - echo "Push $CONTAINER_NAME image to ECR"
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:latest
+      - docker push $REPOSITORY_URL:latest
+      - IMAGE_TAG="$CODEBUILD_BUILD_NUMBER.$(date +%Y%m%d%H%M)"
+      - echo $IMAGE_TAG
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:$IMAGE_TAG
+      - docker push $REPOSITORY_URL:$IMAGE_TAG
+      # Prepare ecs deployment
+      - cat cd/ecs/imagedefinitions.cd.json | envsubst > imagedefinitions.json
+      - cat imagedefinitions.json
+      - cat cd/ecs/$RAW_SERVICE_NAME/taskdef.cd.json | envsubst > taskdef.json
+      - cat taskdef.json
+
+  post_build:
+    commands:
+      # Remove images 
+      - docker image rm "$RAW_SERVICE_NAME:latest" -f
+      - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
+
+artifacts:
+  files:
+    # - ./appspec.yaml
+    - ./imagedefinitions.json
+    - ./taskdef.json

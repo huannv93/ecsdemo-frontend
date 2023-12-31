@@ -1,0 +1,88 @@
+version: 0.2
+
+phases:
+
+  pre_build:
+    commands:
+      # Install tools
+      - apt-get update
+      - apt-get install zip bash gettext jq -y
+      # Install docker-compose
+      - docker --version
+      - curl -L "https://github.com/docker/compose/releases/download/1.25.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      - chmod +x /usr/local/bin/docker-compose
+      - docker-compose --version
+      # Launch docker daemon
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay&
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+
+  build:
+    on-failure: ABORT
+    commands:
+      # Docker build
+      - docker build -t $RAW_SERVICE_NAME .
+      # Push container image to ECR
+      - echo "Push $CONTAINER_NAME image to ECR"
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:latest
+      - docker push $REPOSITORY_URL:latest
+      - IMAGE_TAG="$CODEBUILD_BUILD_NUMBER.$(date +%Y%m%d%H%M)"
+      - echo $IMAGE_TAG
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:$IMAGE_TAG
+      - docker push $REPOSITORY_URL:$IMAGE_TAG
+
+      # Prepare ecs deployment with Blue-Green
+      # Create imagedefinitions.json
+      - cat cd/ecs/imagedefinitions.cd.json | envsubst > imagedefinitions.json
+      - cat imagedefinitions.json
+      # Create appspec.yaml
+      - cat cd/codedeploy/appspec.cd.yaml | envsubst > appspec.yaml
+      - cat appspec.yaml
+
+      # Create taskdef.json on PRIMARY Region
+      - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_PRIMARY > taskdef.temp.json 2> error.log
+      - cat taskdef.temp.json
+      - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json
+      - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+      - echo $IMAGE_URL
+      - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_PRIMARY.json
+      - cat taskdef_$REGION_PRIMARY.json
+
+      # Create taskdef.json on SECONDARY_1 Region
+      - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_SECONDARY_1 > taskdef.temp.json 2> error.log
+      - cat taskdef.temp.json
+      - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json
+      - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+      - echo $IMAGE_URL
+      - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_1.json
+      - cat taskdef_$REGION_SECONDARY_1.json
+      
+
+      # # TODO: IMPROVE IF COMMAND FAILS
+      # # # Create taskdef.json on SECONDARY_2 Region
+      # - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_SECONDARY_2 > taskdef.temp.json 2> error.log
+      # - cat taskdef.temp.json
+      # - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json
+      # - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+      # - echo $IMAGE_URL
+      # - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_2.json
+      # - cat taskdef_$REGION_SECONDARY_2.json
+
+      # # - ls -la 
+
+
+
+
+  post_build:
+    commands:
+      # Remove images 
+      - docker image rm "$RAW_SERVICE_NAME:latest" -f
+      - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
+
+artifacts:
+  files:
+    - ./appspec.yaml
+    - ./imagedefinitions.json
+    - ./taskdef_$REGION_PRIMARY.json
+    - ./taskdef_$REGION_SECONDARY_1.json
+    - ./taskdef_$REGION_SECONDARY_2.json

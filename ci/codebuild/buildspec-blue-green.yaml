@@ -1,0 +1,78 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+
+  pre_build:
+    commands:
+      - cd $SERVICE_LOCATION
+      - docker --version
+      - yum install jq -y
+
+  build:
+    commands:
+      # Docker build
+      - docker build -t $RAW_SERVICE_NAME .
+      # Push container image to ECR
+      - echo "Push $CONTAINER_NAME image to ECR"
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:latest
+      - docker push $REPOSITORY_URL:latest
+      - IMAGE_TAG="$CODEBUILD_BUILD_NUMBER.$(date +%Y%m%d%H%M)"
+      - echo $IMAGE_TAG
+      - docker tag $RAW_SERVICE_NAME:latest $REPOSITORY_URL:$IMAGE_TAG
+      - docker push $REPOSITORY_URL:$IMAGE_TAG
+
+      # Prepare ecs deployment with Blue-Green
+      # Create imagedefinitions.json
+      - cat cd/ecs/imagedefinitions.cd.json | envsubst > imagedefinitions.json
+      - cat imagedefinitions.json
+      # Create appspec.yaml
+      - cat cd/codedeploy/appspec.cd.yaml | envsubst > appspec.yaml
+      - cat appspec.yaml
+      # Create taskdef.json
+      - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+      - echo $IMAGE_URL
+      - aws ecs describe-task-definition --output json --task-definition ${SERVICE_NAME} --query taskDefinition > template.json
+      - jq '.containerDefinitions | map((select(.name == "${SERVICE_NAME}") | .image) |= "${ENV.IMAGE_URL}") | {"containerDefinitions":.}' template.json > template2.json
+      - jq -s '.[0] * .[1]' template.json template2.json > taskdef.json
+      - cat taskdef.json
+  post_build:
+    commands:
+      # Remove images 
+      - docker image rm "$RAW_SERVICE_NAME:latest" -f
+      - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yaml
+    - taskdef.json
+#       # Blue-Green deployment for api
+#       - aws ecs describe-task-definition --task-definition $SERVICE_NAME > taskdef.temp.json
+#       - jq --version
+#       - cat taskdef.temp.json
+#       - cat taskdef.temp.json | jq '.taskDefinition'| jq 'del(.registeredAt, .registeredBy, .requiresCompatibilities, .compatibilities, .requiresAttributes, .placementConstraints, .status, .revision, .taskDefinitionArn)' > taskdef.raw.json 
+#       - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
+#       - echo $IMAGE_URL
+#       # - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == ${SERVICE_NAME}) | .image) |= ${IMAGE_URL}' > taskdef.$SERVICE_NAME.json
+#       # - cat taskdef.raw.json | jq --argjson SERVICE_NAME "$SERVICE_NAME" --argjson IMAGE_URL "$IMAGE_URL" '(.containerDefinitions[] | select(.name == $SERVICE_NAME) | .image) |= $IMAGE_URL' > "taskdef.${SERVICE_NAME}.json"
+#       - cat taskdef.raw.json | jq --arg SERVICE_NAME "$SERVICE_NAME" --arg IMAGE_URL "$IMAGE_URL" '.containerDefinitions[] | select(.name == $SERVICE_NAME) | .image = $IMAGE_URL' > "taskdef.${SERVICE_NAME}.json"
+
+#       - cat taskdef.${SERVICE_NAME}.json
+#       - cat cd/codedeploy/appspec.cd.yaml | envsubst > appspec.$SERVICE_NAME.yaml
+#       - cat appspec.$SERVICE_NAME.yaml
+
+
+#   post_build:
+#     commands:
+#       # Remove images 
+#       - docker image rm "$RAW_SERVICE_NAME:latest" -f
+#       - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
+
+# artifacts:
+#   files:
+#     - ./appspec.$SERVICE_NAME.yaml
+#     - ./imagedefinitions.json
+#     - ./taskdef.${SERVICE_NAME}.json
