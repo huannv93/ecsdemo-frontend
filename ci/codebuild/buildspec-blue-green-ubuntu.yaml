@@ -68,7 +68,6 @@ phases:
       # - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_2.json
       # - cat taskdef_$REGION_SECONDARY_2.json
 
-      # # - ls -la 
 
 
 
