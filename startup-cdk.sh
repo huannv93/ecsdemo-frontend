@@ -83,7 +83,7 @@ fi
 
 export CODE_HASH="$(cat code_hash.txt)"
 export IP
-export AZ="${IP} in AZ-${zone}-Version-2"
+export AZ="${IP} in AZ-${zone}-Version-3"
 
 # exec bundle exec thin start
 RAILS_ENV=production rake assets:precompile
