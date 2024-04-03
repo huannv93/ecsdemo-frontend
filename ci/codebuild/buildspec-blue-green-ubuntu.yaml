@@ -50,10 +50,16 @@ phases:
       # Check exist TASK_DEF_CPU, TASK_DEF_MEMORY environment value. If empty set default value 1024:2048
       - echo $TASK_DEF_CPU
       - echo $TASK_DEF_MEMORY
-      - if [ -z "$TASK_DEF_CPU" ]; then export CPU="1024"; else export CPU="$TASK_DEF_CPU"; fi
+      # - if [ -z "$TASK_DEF_CPU" ]; then export CPU="1024"; export MEMORY="2048"; else export CPU="$TASK_DEF_CPU"; fi
+      # - echo $CPU
+      # - if [ -z "$TASK_DEF_MEMORY" ]; then export CPU="1024"; export MEMORY="2048"; else export MEMORY="$TASK_DEF_MEMORY"; fi
+      # - echo $MEMORY
+
+      - if [ -z "$TASK_DEF_CPU" ] || [ -z "$TASK_DEF_MEMORY" ]; then export CPU="1024"; export MEMORY="2048"; else export CPU="$TASK_DEF_CPU"; export MEMORY="$TASK_DEF_MEMORY"; fi
       - echo $CPU
-      - if [ -z "$TASK_DEF_MEMORY" ]; then export MEMORY="2048"; else export MEMORY="$TASK_DEF_MEMORY"; fi
       - echo $MEMORY
+      
+
       # - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       # - cat taskdef.raw.json | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
 
