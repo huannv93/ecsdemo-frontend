@@ -1,7 +1,6 @@
 version: 0.2
 
 phases:
-
   pre_build:
     commands:
       # Install tools
@@ -46,9 +45,13 @@ phases:
       - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
       - echo $IMAGE_URL
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_PRIMARY.json
-      - export CPU="$TASK_DEF_CPU"
-      - export MEMORY="$TASK_DEF_MEMORY"
-      # - if [ -z "$CPU" ]; then COMMIT_ID_TRIGGER="${BRANCH_NAME}~1"; else COMMIT_ID_TRIGGER="$LAST_COMMIT_ID"; fi
+      # - export CPU="$TASK_DEF_CPU"
+      # - export MEMORY="$TASK_DEF_MEMORY"
+      # Check exist TASK_DEF_CPU, TASK_DEF_MEMORY environment value. If empty set default value 1024:2048
+      - echo $TASK_DEF_CPU
+      - echo $TASK_DEF_MEMORY
+      - if [ -z "$TASK_DEF_CPU" ]; then export CPU="1024"; else export CPU="$TASK_DEF_CPU"; fi
+      - if [ -z "$TASK_DEF_MEMORY" ]; then export MEMORY="2048"; else export MEMORY="$TASK_DEF_MEMORY"; fi
       - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       - cat taskdef.raw.json | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
       - cat taskdef_$REGION_PRIMARY.json
@@ -61,7 +64,6 @@ phases:
       - echo $IMAGE_URL
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_1.json
       - cat taskdef_$REGION_SECONDARY_1.json
-      
 
       # # TODO: IMPROVE IF COMMAND FAILS
       # # # Create taskdef.json on SECONDARY_2 Region
@@ -73,14 +75,10 @@ phases:
       # - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_SECONDARY_2.json
       # - cat taskdef_$REGION_SECONDARY_2.json
 
-
-
-
-
   post_build:
     commands:
-      - ls -la 
-      # Remove images 
+      - ls -la
+      # Remove images
       - docker image rm "$RAW_SERVICE_NAME:latest" -f
       - docker image rm "$REPOSITORY_URL:$IMAGE_TAG" -f
 
