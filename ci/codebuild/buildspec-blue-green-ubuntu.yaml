@@ -48,24 +48,28 @@ phases:
       # - export CPU="$TASK_DEF_CPU"
       # - export MEMORY="$TASK_DEF_MEMORY"
       # Check exist TASK_DEF_CPU, TASK_DEF_MEMORY environment value. If empty set default value 1024:2048
-      - echo $TASK_DEF_CPU
-      - echo $TASK_DEF_MEMORY
+
       # - if [ -z "$TASK_DEF_CPU" ]; then export CPU="1024"; export MEMORY="2048"; else export CPU="$TASK_DEF_CPU"; fi
       # - echo $CPU
       # - if [ -z "$TASK_DEF_MEMORY" ]; then export CPU="1024"; export MEMORY="2048"; else export MEMORY="$TASK_DEF_MEMORY"; fi
       # - echo $MEMORY
 
+
+      # Check exist TASK_DEF_CPU, TASK_DEF_MEMORY environment value. If empty set default value 1024:2048
+      # This is option to set cpu, mem from env in codebuid_project.
+      - echo $TASK_DEF_CPU
+      - echo $TASK_DEF_MEMORY
       - if [ -z "$TASK_DEF_CPU" ] || [ -z "$TASK_DEF_MEMORY" ]; then export CPU="1024"; export MEMORY="2048"; else export CPU="$TASK_DEF_CPU"; export MEMORY="$TASK_DEF_MEMORY"; fi
       - echo $CPU
       - echo $MEMORY
       
-
       # - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       # - cat taskdef.raw.json | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
-
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' | jq '(.cpu) |= $ENV.CPU' | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
 
       - cat taskdef_$REGION_PRIMARY.json
+
+
 
       # Create taskdef.json on SECONDARY_1 Region
       - aws ecs describe-task-definition --task-definition $SERVICE_NAME --region $REGION_SECONDARY_1 > taskdef.temp.json 2> error.log
