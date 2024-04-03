@@ -46,8 +46,9 @@ phases:
       - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
       - echo $IMAGE_URL
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_PRIMARY.json
-      - export CPU="256"
-      - export MEMORY="512"
+      - export CPU="$TASK_DEF_CPU"
+      - export MEMORY="$TASK_DEF_MEMORY"
+      # - if [ -z "$CPU" ]; then COMMIT_ID_TRIGGER="${BRANCH_NAME}~1"; else COMMIT_ID_TRIGGER="$LAST_COMMIT_ID"; fi
       - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       - cat taskdef.raw.json | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
       - cat taskdef_$REGION_PRIMARY.json
