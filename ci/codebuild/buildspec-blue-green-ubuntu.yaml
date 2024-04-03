@@ -46,6 +46,8 @@ phases:
       - export IMAGE_URL=$REPOSITORY_URL:$IMAGE_TAG
       - echo $IMAGE_URL
       - cat taskdef.raw.json | jq '(.containerDefinitions[] | select(.name == $ENV.SERVICE_NAME) | .image) |= $ENV.IMAGE_URL' > taskdef_$REGION_PRIMARY.json
+      - export CPU="256"
+      - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       - cat taskdef_$REGION_PRIMARY.json
 
       # Create taskdef.json on SECONDARY_1 Region
