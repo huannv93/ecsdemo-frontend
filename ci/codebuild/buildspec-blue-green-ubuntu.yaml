@@ -51,9 +51,9 @@ phases:
       - echo $TASK_DEF_CPU
       - echo $TASK_DEF_MEMORY
       - if [ -z "$TASK_DEF_CPU" ]; then export CPU="1024"; else export CPU="$TASK_DEF_CPU"; fi
-      - echo $TASK_DEF_CPU
+      - echo $CPU
       - if [ -z "$TASK_DEF_MEMORY" ]; then export MEMORY="2048"; else export MEMORY="$TASK_DEF_MEMORY"; fi
-      - echo $TASK_DEF_MEMORY
+      - echo $MEMORY
       - cat taskdef.raw.json | jq '(.cpu) |= $ENV.CPU' > taskdef_$REGION_PRIMARY.json
       - cat taskdef.raw.json | jq '(.memory) |= $ENV.MEMORY' > taskdef_$REGION_PRIMARY.json
       - cat taskdef_$REGION_PRIMARY.json
